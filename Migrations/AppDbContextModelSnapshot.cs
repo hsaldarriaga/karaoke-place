@@ -39,6 +39,11 @@ namespace karaoke_place.Migrations
                     b.Property<int>("Role")
                         .HasColumnType("integer");
 
+                    b.Property<int>("Status")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(1);
+
                     b.Property<int>("UserId")
                         .HasColumnType("integer");
 
@@ -120,10 +125,6 @@ namespace karaoke_place.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
-                    b.Property<string>("ArtistName")
-                        .IsRequired()
-                        .HasColumnType("text");
-
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -133,14 +134,7 @@ namespace karaoke_place.Migrations
                     b.Property<int>("Order")
                         .HasColumnType("integer");
 
-                    b.Property<int?>("SongId")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("SongTitle")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<int>("Status")
+                    b.Property<int>("SongId")
                         .HasColumnType("integer");
 
                     b.Property<int>("UserId")
@@ -173,13 +167,38 @@ namespace karaoke_place.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<string>("Username")
-                        .IsRequired()
-                        .HasColumnType("text");
-
                     b.HasKey("Id");
 
                     b.ToTable("Users");
+                });
+
+            modelBuilder.Entity("karaoke_place.Models.UserPreferredSongDB", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("SongId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SongId");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("UserId", "SongId")
+                        .IsUnique();
+
+                    b.ToTable("UserPreferredSongs");
                 });
 
             modelBuilder.Entity("karaoke_place.Models.EventParticipant", b =>
@@ -223,7 +242,8 @@ namespace karaoke_place.Migrations
                     b.HasOne("karaoke_place.Models.Song", "Song")
                         .WithMany("SongProposals")
                         .HasForeignKey("SongId")
-                        .OnDelete(DeleteBehavior.SetNull);
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
 
                     b.HasOne("karaoke_place.Models.User", "User")
                         .WithMany("SongProposals")
@@ -232,6 +252,25 @@ namespace karaoke_place.Migrations
                         .IsRequired();
 
                     b.Navigation("Event");
+
+                    b.Navigation("Song");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("karaoke_place.Models.UserPreferredSongDB", b =>
+                {
+                    b.HasOne("karaoke_place.Models.Song", "Song")
+                        .WithMany("PreferredByUsers")
+                        .HasForeignKey("SongId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("karaoke_place.Models.User", "User")
+                        .WithMany("PreferredSongs")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
                     b.Navigation("Song");
 
@@ -247,6 +286,8 @@ namespace karaoke_place.Migrations
 
             modelBuilder.Entity("karaoke_place.Models.Song", b =>
                 {
+                    b.Navigation("PreferredByUsers");
+
                     b.Navigation("SongProposals");
                 });
 
@@ -255,6 +296,8 @@ namespace karaoke_place.Migrations
                     b.Navigation("CreatedEvents");
 
                     b.Navigation("EventParticipations");
+
+                    b.Navigation("PreferredSongs");
 
                     b.Navigation("SongProposals");
                 });

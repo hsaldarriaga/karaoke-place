@@ -2,18 +2,14 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace karaoke_place.Models;
 
-[Table("SongProposals")]
-public class SongProposalDB
+[Table("UserPreferredSongs")]
+public class UserPreferredSongDB
 {
     public int Id { get; set; }
-    public int EventId { get; set; }
     public int UserId { get; set; }
     public int SongId { get; set; }
-    public int Order { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
-    // Navigation properties
-    public KaraokeEventDB Event { get; set; } = null!;
     public UserDB User { get; set; } = null!;
     public SongDB Song { get; set; } = null!;
 }
