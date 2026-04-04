@@ -1,16 +1,21 @@
 using karaoke_place.Api.Users.Dto;
+using karaoke_place.Modules.Auth;
 using karaoke_place.Modules.Users;
 using karaoke_place.Modules.Users.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace karaoke_place.Api.Users;
 
 [ApiController]
 [Route("api/[controller]")]
-public class UsersController(UserService service) : ControllerBase
+[RequireMockAuth]
+public class UsersController(UserService service, CurrentUserContext currentUserContext) : ControllerBase
 {
     private readonly UserService _service = service;
+    private readonly CurrentUserContext _currentUserContext = currentUserContext;
 
+    [AllowAnonymous]
     [HttpPost]
     public async Task<ActionResult<UserModel>> Create(CreateUserDto dto)
     {
@@ -25,28 +30,32 @@ public class UsersController(UserService service) : ControllerBase
         return Created($"/api/users/{created.Id}", created);
     }
 
-    [HttpPut("{id:int}")]
-    public async Task<ActionResult> Update(int id, UpdateUserDto dto)
+    [HttpPut("me")]
+    public async Task<ActionResult> Update(UpdateUserDto dto)
     {
         if (!ModelState.IsValid) return BadRequest(ModelState);
+
+        var userId = _currentUserContext.GetUserId()!.Value;
 
         var model = new UserUpdate
         {
             Email = dto.Email
         };
 
-        var ok = await _service.UpdateAsync(id, model);
+        var ok = await _service.UpdateAsync(userId, model);
         if (!ok) return NotFound();
 
         return NoContent();
     }
 
-    [HttpPost("{id:int}/preferred-songs")]
-    public async Task<ActionResult> AddPreferredSong(int id, AddPreferredSongDto dto)
+    [HttpPost("me/preferred-songs")]
+    public async Task<ActionResult> AddPreferredSong(AddPreferredSongDto dto)
     {
         if (!ModelState.IsValid) return BadRequest(ModelState);
 
-        var (ok, error) = await _service.AddPreferredSongAsync(id, dto.SongId);
+        var userId = _currentUserContext.GetUserId()!.Value;
+
+        var (ok, error) = await _service.AddPreferredSongAsync(userId, dto.SongId);
         if (!ok)
         {
             if (error == "UserNotFound")
@@ -62,10 +71,12 @@ public class UsersController(UserService service) : ControllerBase
         return NoContent();
     }
 
-    [HttpDelete("{id:int}/preferred-songs/{songId:int}")]
-    public async Task<ActionResult> RemovePreferredSong(int id, int songId)
+    [HttpDelete("me/preferred-songs/{songId:int}")]
+    public async Task<ActionResult> RemovePreferredSong(int songId)
     {
-        var (ok, error) = await _service.RemovePreferredSongAsync(id, songId);
+        var userId = _currentUserContext.GetUserId()!.Value;
+
+        var (ok, error) = await _service.RemovePreferredSongAsync(userId, songId);
         if (!ok)
         {
             if (error == "UserNotFound")

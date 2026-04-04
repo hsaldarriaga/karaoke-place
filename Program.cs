@@ -2,6 +2,7 @@ using karaoke_place.Data;
 using karaoke_place.Api.Diagnostic;
 using karaoke_place.Modules.Diagnostic;
 using karaoke_place.Modules.KaraokeEvents;
+using karaoke_place.Modules.Auth;
 using karaoke_place.Modules.Users;
 using Microsoft.EntityFrameworkCore;
 using DotNetEnv;
@@ -19,6 +20,9 @@ builder.Services.AddScoped<KaraokeEventRepository>();
 builder.Services.AddScoped<KaraokeEventService>();
 builder.Services.AddScoped<UserRepository>();
 builder.Services.AddScoped<UserService>();
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<CurrentUserContext>();
+builder.Services.AddScoped<RequireMockAuthFilter>();
 builder.Services.AddControllers();
 
 var app = builder.Build();
