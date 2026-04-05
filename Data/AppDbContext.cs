@@ -41,6 +41,9 @@ public class AppDbContext : DbContext
             .WithOne(ps => ps.User)
             .HasForeignKey(ps => ps.UserId)
             .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<UserDB>()
+            .HasIndex(u => u.Auth0Subject)
+            .IsUnique();
 
         // KaraokeEvent relationships
         modelBuilder.Entity<KaraokeEventDB>()

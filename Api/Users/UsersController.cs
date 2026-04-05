@@ -1,5 +1,5 @@
+using karaoke_place.Api.Common;
 using karaoke_place.Api.Users.Dto;
-using karaoke_place.Modules.Auth;
 using karaoke_place.Modules.Songs.Models;
 using karaoke_place.Modules.Users;
 using karaoke_place.Modules.Users.Models;
@@ -10,7 +10,7 @@ namespace karaoke_place.Api.Users;
 
 [ApiController]
 [Route("api/[controller]")]
-[RequireMockAuth]
+[Authorize]
 public class UsersController(UserService service, CurrentUserContext currentUserContext) : ControllerBase
 {
     private readonly UserService _service = service;
@@ -50,7 +50,8 @@ public class UsersController(UserService service, CurrentUserContext currentUser
 
         var model = new UserCreate
         {
-            Email = dto.Email
+            Email = dto.Email,
+            Auth0Subject = _currentUserContext.GetSubject()
         };
 
         var created = await _service.CreateAsync(model);
@@ -62,14 +63,16 @@ public class UsersController(UserService service, CurrentUserContext currentUser
     {
         if (!ModelState.IsValid) return BadRequest(ModelState);
 
-        var userId = _currentUserContext.GetUserId()!.Value;
+        var userId = await _currentUserContext.GetUserIdAsync();
+        if (userId == null)
+            return Unauthorized(new { status = "USER_NOT_LINKED", error = "Authenticated user is not linked to a local user record." });
 
         var model = new UserUpdate
         {
             Email = dto.Email
         };
 
-        var ok = await _service.UpdateAsync(userId, model);
+        var ok = await _service.UpdateAsync(userId.Value, model);
         if (!ok) return NotFound();
 
         return NoContent();
@@ -80,9 +83,11 @@ public class UsersController(UserService service, CurrentUserContext currentUser
     {
         if (!ModelState.IsValid) return BadRequest(ModelState);
 
-        var userId = _currentUserContext.GetUserId()!.Value;
+        var userId = await _currentUserContext.GetUserIdAsync();
+        if (userId == null)
+            return Unauthorized(new { status = "USER_NOT_LINKED", error = "Authenticated user is not linked to a local user record." });
 
-        var (ok, error) = await _service.AddPreferredSongAsync(userId, dto.SongId);
+        var (ok, error) = await _service.AddPreferredSongAsync(userId.Value, dto.SongId);
         if (!ok)
         {
             if (error == "UserNotFound")
@@ -101,9 +106,11 @@ public class UsersController(UserService service, CurrentUserContext currentUser
     [HttpDelete("me/preferred-songs/{songId:int}")]
     public async Task<ActionResult> RemovePreferredSong(int songId)
     {
-        var userId = _currentUserContext.GetUserId()!.Value;
+        var userId = await _currentUserContext.GetUserIdAsync();
+        if (userId == null)
+            return Unauthorized(new { status = "USER_NOT_LINKED", error = "Authenticated user is not linked to a local user record." });
 
-        var (ok, error) = await _service.RemovePreferredSongAsync(userId, songId);
+        var (ok, error) = await _service.RemovePreferredSongAsync(userId.Value, songId);
         if (!ok)
         {
             if (error == "UserNotFound")

@@ -6,6 +6,27 @@ public class UserService(UserRepository repo)
 {
     private readonly UserRepository _repo = repo;
 
+    public Task<int?> GetIdByAuth0SubjectAsync(string auth0Subject)
+    {
+        return _repo.GetIdByAuth0SubjectAsync(auth0Subject);
+    }
+
+    public async Task<int?> GetOrCreateByAuth0SubjectAsync(string auth0Subject, string? email)
+    {
+        var userId = await _repo.GetIdByAuth0SubjectAsync(auth0Subject);
+        if (userId != null) return userId;
+
+        var created = await _repo.AddAsync(new UserCreate
+        {
+            Email = string.IsNullOrWhiteSpace(email)
+                ? $"{auth0Subject.Replace("|", ".", StringComparison.Ordinal)}@auth0.local"
+                : email,
+            Auth0Subject = auth0Subject
+        });
+
+        return created.Id;
+    }
+
     public Task<IEnumerable<UserModel>> GetAllAsync()
     {
         return _repo.GetAllAsync();

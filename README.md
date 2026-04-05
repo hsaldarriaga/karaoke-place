@@ -32,6 +32,9 @@ Create `.env` in the project root:
 
 ```env
 DATABASE_URL=Host=localhost;Port=5432;Database=karaoke_place;Username=postgres;Password=postgres
+CORS_ALLOWED_ORIGINS=http://localhost:8080
+AUTH0_DOMAIN=https://dev-your-tenant.us.auth0.com/
+AUTH0_AUDIENCE=karaoke-clients
 ```
 
 ### 3) Apply migrations
@@ -40,7 +43,16 @@ DATABASE_URL=Host=localhost;Port=5432;Database=karaoke_place;Username=postgres;P
 dotnet ef database update
 ```
 
-### 4) Run the API
+### 4) Configure Auth0
+
+Set your SPA to request access tokens for the API audience from `.env`:
+
+- `AUTH0_DOMAIN`
+- `AUTH0_AUDIENCE`
+
+Protected routes now expect a valid `Bearer` JWT from Auth0.
+
+### 5) Run the API
 
 ```bash
 dotnet run --project karaoke-place.csproj
@@ -48,12 +60,12 @@ dotnet run --project karaoke-place.csproj
 
 The API will be available at:
 
-- `http://localhost:5068`
-- `https://localhost:7158`
+- `http://localhost:3000`
+- `https://localhost:3001`
 
 OpenAPI endpoint:
 
-- `http://localhost:5068/openapi/v1.json`
+- `http://localhost:3000/openapi/v1.json`
 
 ---
 

@@ -10,6 +10,15 @@ public class UserRepository(AppDbContext db)
 {
     private readonly AppDbContext _db = db;
 
+    public Task<int?> GetIdByAuth0SubjectAsync(string auth0Subject)
+    {
+        return _db.Users
+            .AsNoTracking()
+            .Where(u => u.Auth0Subject == auth0Subject)
+            .Select(u => (int?)u.Id)
+            .FirstOrDefaultAsync();
+    }
+
     public async Task<IEnumerable<UserModel>> GetAllAsync()
     {
         return await _db.Users
@@ -55,9 +64,27 @@ public class UserRepository(AppDbContext db)
 
     public async Task<UserModel> AddAsync(UserCreate model)
     {
+        if (!string.IsNullOrWhiteSpace(model.Auth0Subject))
+        {
+            var existingUser = await _db.Users
+                .AsNoTracking()
+                .Where(u => u.Auth0Subject == model.Auth0Subject)
+                .Select(u => new UserModel
+                {
+                    Id = u.Id,
+                    Email = u.Email,
+                    CreatedAt = u.CreatedAt
+                })
+                .FirstOrDefaultAsync();
+
+            if (existingUser != null)
+                return existingUser;
+        }
+
         var user = new UserDB
         {
             Email = model.Email,
+            Auth0Subject = model.Auth0Subject,
             CreatedAt = DateTime.UtcNow
         };
 

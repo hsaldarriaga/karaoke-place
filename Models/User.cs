@@ -7,6 +7,7 @@ public class UserDB
 {
     public int Id { get; set; }
     public string Email { get; set; } = string.Empty;
+    public string? Auth0Subject { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     // Navigation properties
