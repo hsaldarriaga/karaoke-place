@@ -6,6 +6,21 @@ public class UserService(UserRepository repo)
 {
     private readonly UserRepository _repo = repo;
 
+    public Task<IEnumerable<UserModel>> GetAllAsync()
+    {
+        return _repo.GetAllAsync();
+    }
+
+    public Task<UserModel?> GetByIdAsync(int id)
+    {
+        return _repo.GetByIdAsync(id);
+    }
+
+    public Task<IEnumerable<karaoke_place.Modules.Songs.Models.SongModel>> GetPreferredSongsAsync(int userId)
+    {
+        return _repo.GetPreferredSongsAsync(userId);
+    }
+
     public Task<UserModel> CreateAsync(UserCreate model)
     {
         return _repo.AddAsync(model);

@@ -6,6 +6,7 @@ namespace karaoke_place.Models;
 public class SongDB
 {
     public int Id { get; set; }
+    public string ExternalId { get; set; } = string.Empty;
     public string Title { get; set; } = string.Empty;
     public string Artist { get; set; } = string.Empty;
 

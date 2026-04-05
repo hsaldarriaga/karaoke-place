@@ -70,11 +70,6 @@ public class AppDbContext : DbContext
             .HasIndex(ep => new { ep.EventId, ep.UserId })
             .IsUnique();
 
-        // SongProposal unique constraint
-        modelBuilder.Entity<SongProposalDB>()
-            .HasIndex(sp => new { sp.EventId, sp.Order })
-            .IsUnique();
-
         // UserPreferredSong indexes
         modelBuilder.Entity<UserPreferredSongDB>()
             .HasIndex(ps => ps.UserId);

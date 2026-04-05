@@ -1,4 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
+using karaoke_place.Api.Common;
+using karaoke_place.Modules.Common;
 using karaoke_place.Modules.KaraokeEvents;
 using karaoke_place.Api.KaraokeEvents.Dto;
 using karaoke_place.Modules.KaraokeEvents.Models;
@@ -12,10 +14,14 @@ public class KaraokeEventsController(KaraokeEventService service) : ControllerBa
     private readonly KaraokeEventService _service = service;
 
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<KaraokeEvent>>> Get()
+    public async Task<ActionResult<PagedResult<KaraokeEvent>>> Get(
+        [FromQuery] bool? isActive,
+        [FromQuery] PaginationParams pagination)
     {
-        var events = await _service.GetAllAsync();
-        return Ok(events);
+        if (!ModelState.IsValid) return BadRequest(ModelState);
+
+        var result = await _service.GetAllAsync(isActive, pagination.Page, pagination.PageSize);
+        return Ok(result);
     }
 
     [HttpGet("{id:int}")]
@@ -24,6 +30,26 @@ public class KaraokeEventsController(KaraokeEventService service) : ControllerBa
         var ev = await _service.GetByIdAsync(id);
         if (ev == null) return NotFound();
         return Ok(ev);
+    }
+
+    [HttpGet("{id:int}/participants")]
+    public async Task<ActionResult<IEnumerable<EventParticipantModel>>> GetParticipants(int id)
+    {
+        var ev = await _service.GetByIdAsync(id);
+        if (ev == null) return NotFound();
+
+        var participants = await _service.GetParticipantsAsync(id);
+        return Ok(participants);
+    }
+
+    [HttpGet("{id:int}/songProposals")]
+    public async Task<ActionResult<IEnumerable<SongProposalModel>>> GetSongProposals(int id)
+    {
+        var ev = await _service.GetByIdAsync(id);
+        if (ev == null) return NotFound();
+
+        var proposals = await _service.GetSongProposalsAsync(id);
+        return Ok(proposals);
     }
 
     [HttpPost]

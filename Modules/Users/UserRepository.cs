@@ -1,5 +1,6 @@
 using karaoke_place.Data;
 using karaoke_place.Models;
+using karaoke_place.Modules.Songs.Models;
 using karaoke_place.Modules.Users.Models;
 using Microsoft.EntityFrameworkCore;
 
@@ -8,6 +9,49 @@ namespace karaoke_place.Modules.Users;
 public class UserRepository(AppDbContext db)
 {
     private readonly AppDbContext _db = db;
+
+    public async Task<IEnumerable<UserModel>> GetAllAsync()
+    {
+        return await _db.Users
+            .AsNoTracking()
+            .Select(u => new UserModel
+            {
+                Id = u.Id,
+                Email = u.Email,
+                CreatedAt = u.CreatedAt
+            })
+            .ToListAsync();
+    }
+
+    public async Task<UserModel?> GetByIdAsync(int id)
+    {
+        return await _db.Users
+            .AsNoTracking()
+            .Where(u => u.Id == id)
+            .Select(u => new UserModel
+            {
+                Id = u.Id,
+                Email = u.Email,
+                CreatedAt = u.CreatedAt
+            })
+            .FirstOrDefaultAsync();
+    }
+
+    public async Task<IEnumerable<SongModel>> GetPreferredSongsAsync(int userId)
+    {
+        return await _db.UserPreferredSongs
+            .AsNoTracking()
+            .Where(ps => ps.UserId == userId)
+            .OrderBy(ps => ps.CreatedAt)
+            .Select(ps => new SongModel
+            {
+                Id = ps.Song.Id,
+                ExternalId = ps.Song.ExternalId,
+                Title = ps.Song.Title,
+                Artist = ps.Song.Artist
+            })
+            .ToListAsync();
+    }
 
     public async Task<UserModel> AddAsync(UserCreate model)
     {

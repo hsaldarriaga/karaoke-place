@@ -78,6 +78,9 @@ namespace karaoke_place.Migrations
                     b.Property<DateTime>("EndTime")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
                     b.Property<string>("Location")
                         .IsRequired()
                         .HasColumnType("text");
@@ -105,6 +108,10 @@ namespace karaoke_place.Migrations
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<string>("Artist")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("ExternalId")
                         .IsRequired()
                         .HasColumnType("text");
 
@@ -145,9 +152,6 @@ namespace karaoke_place.Migrations
                     b.HasIndex("SongId");
 
                     b.HasIndex("UserId");
-
-                    b.HasIndex("EventId", "Order")
-                        .IsUnique();
 
                     b.ToTable("SongProposals");
                 });

@@ -1,5 +1,6 @@
 using karaoke_place.Data;
 using karaoke_place.Models;
+using karaoke_place.Modules.Common;
 using karaoke_place.Modules.KaraokeEvents.Models;
 using Microsoft.EntityFrameworkCore;
 
@@ -9,11 +10,22 @@ public class KaraokeEventRepository(AppDbContext db)
 {
     private readonly AppDbContext _db = db;
 
-    public async Task<IEnumerable<KaraokeEvent>> GetAllAsync()
+    public async Task<PagedResult<KaraokeEvent>> GetAllAsync(bool? isActive = null, int page = 1, int pageSize = 20)
     {
-        return await _db.KaraokeEvents
-            .AsNoTracking()
-                .Select(e => new KaraokeEvent
+        var query = _db.KaraokeEvents.AsNoTracking();
+
+        if (isActive.HasValue)
+        {
+            query = query.Where(e => e.IsActive == isActive.Value);
+        }
+
+        var totalCount = await query.CountAsync();
+
+        var items = await query
+            .OrderBy(e => e.CreatedAt)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .Select(e => new KaraokeEvent
             {
                 Id = e.Id,
                 Name = e.Name,
@@ -26,6 +38,14 @@ public class KaraokeEventRepository(AppDbContext db)
                 CreatedAt = e.CreatedAt
             })
             .ToListAsync();
+
+        return new PagedResult<KaraokeEvent>
+        {
+            Page = page,
+            PageSize = pageSize,
+            TotalCount = totalCount,
+            Items = items
+        };
     }
 
     public async Task<KaraokeEvent?> GetByIdAsync(int id)
@@ -44,6 +64,43 @@ public class KaraokeEventRepository(AppDbContext db)
             IsActive = e.IsActive,
             CreatedAt = e.CreatedAt
         };
+    }
+
+    public async Task<IEnumerable<EventParticipantModel>> GetParticipantsAsync(int eventId)
+    {
+        return await _db.EventParticipants
+            .AsNoTracking()
+            .Where(ep => ep.EventId == eventId)
+            .OrderBy(ep => ep.CreatedAt)
+            .Select(ep => new EventParticipantModel
+            {
+                Id = ep.Id,
+                EventId = ep.EventId,
+                UserId = ep.UserId,
+                Role = ep.Role,
+                Status = ep.Status,
+                CreatedAt = ep.CreatedAt
+            })
+            .ToListAsync();
+    }
+
+    public async Task<IEnumerable<SongProposalModel>> GetSongProposalsAsync(int eventId)
+    {
+        return await _db.SongProposals
+            .AsNoTracking()
+            .Where(sp => sp.EventId == eventId)
+            .OrderBy(sp => sp.Order)
+            .ThenBy(sp => sp.CreatedAt)
+            .Select(sp => new SongProposalModel
+            {
+                Id = sp.Id,
+                EventId = sp.EventId,
+                UserId = sp.UserId,
+                SongId = sp.SongId,
+                Order = sp.Order,
+                CreatedAt = sp.CreatedAt
+            })
+            .ToListAsync();
     }
 
     public async Task<KaraokeEvent> AddAsync(KaraokeEventCreate model)
@@ -168,8 +225,37 @@ public class KaraokeEventRepository(AppDbContext db)
         if (participant.Status != ParticipantStatus.Invited) return (false, "InvitationNotPending");
 
         participant.Status = newStatus;
+
+        if (newStatus == ParticipantStatus.Accepted)
+        {
+            await CopyPreferredSongsToSongProposalsAsync(eventId, userId);
+        }
+
         await _db.SaveChangesAsync();
 
         return (true, null);
+    }
+
+    private async Task CopyPreferredSongsToSongProposalsAsync(int eventId, int userId)
+    {
+        var preferredSongIds = await _db.UserPreferredSongs
+            .AsNoTracking()
+            .Where(ps => ps.UserId == userId)
+            .Select(ps => ps.SongId)
+            .ToListAsync();
+
+        if (preferredSongIds.Count == 0) return;
+
+        foreach (var songId in preferredSongIds)
+        {
+            _db.SongProposals.Add(new SongProposalDB
+            {
+                EventId = eventId,
+                UserId = userId,
+                SongId = songId,
+                Order = 0,
+                CreatedAt = DateTime.UtcNow
+            });
+        }
     }
 }

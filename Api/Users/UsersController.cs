@@ -1,5 +1,6 @@
 using karaoke_place.Api.Users.Dto;
 using karaoke_place.Modules.Auth;
+using karaoke_place.Modules.Songs.Models;
 using karaoke_place.Modules.Users;
 using karaoke_place.Modules.Users.Models;
 using Microsoft.AspNetCore.Authorization;
@@ -14,6 +15,32 @@ public class UsersController(UserService service, CurrentUserContext currentUser
 {
     private readonly UserService _service = service;
     private readonly CurrentUserContext _currentUserContext = currentUserContext;
+
+    [HttpGet]
+    public async Task<ActionResult<IEnumerable<UserModel>>> Get()
+    {
+        var users = await _service.GetAllAsync();
+        return Ok(users);
+    }
+
+    [HttpGet("{id:int}")]
+    public async Task<ActionResult<UserModel>> Get(int id)
+    {
+        var user = await _service.GetByIdAsync(id);
+        if (user == null) return NotFound();
+        return Ok(user);
+    }
+
+    [AllowAnonymous]
+    [HttpGet("{id:int}/preferred-songs")]
+    public async Task<ActionResult<IEnumerable<SongModel>>> GetPreferredSongs(int id)
+    {
+        var user = await _service.GetByIdAsync(id);
+        if (user == null) return NotFound();
+
+        var songs = await _service.GetPreferredSongsAsync(id);
+        return Ok(songs);
+    }
 
     [AllowAnonymous]
     [HttpPost]
