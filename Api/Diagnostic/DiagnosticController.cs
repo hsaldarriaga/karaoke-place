@@ -4,7 +4,7 @@ using karaoke_place.Modules.Diagnostic;
 namespace karaoke_place.Api.Diagnostic;
 
 [ApiController]
-[Route("[diagnostic]")]
+[Route("[controller]")]
 public class DiagnosticController(DiagnosticService diagnosticService) : ControllerBase
 {
     private readonly DiagnosticService _diagnosticService = diagnosticService;

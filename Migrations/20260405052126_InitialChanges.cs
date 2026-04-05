@@ -7,7 +7,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace karaoke_place.Migrations
 {
     /// <inheritdoc />
-    public partial class InitialCreate : Migration
+    public partial class InitialChanges : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -18,6 +18,7 @@ namespace karaoke_place.Migrations
                 {
                     Id = table.Column<int>(type: "integer", nullable: false)
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    ExternalId = table.Column<string>(type: "text", nullable: false),
                     Title = table.Column<string>(type: "text", nullable: false),
                     Artist = table.Column<string>(type: "text", nullable: false)
                 },
@@ -32,7 +33,6 @@ namespace karaoke_place.Migrations
                 {
                     Id = table.Column<int>(type: "integer", nullable: false)
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
-                    Username = table.Column<string>(type: "text", nullable: false),
                     Email = table.Column<string>(type: "text", nullable: false),
                     CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
                 },
@@ -53,7 +53,8 @@ namespace karaoke_place.Migrations
                     StartTime = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     EndTime = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     CreatedByUserId = table.Column<int>(type: "integer", nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    IsActive = table.Column<bool>(type: "boolean", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -67,6 +68,33 @@ namespace karaoke_place.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "UserPreferredSongs",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    UserId = table.Column<int>(type: "integer", nullable: false),
+                    SongId = table.Column<int>(type: "integer", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_UserPreferredSongs", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_UserPreferredSongs_Songs_SongId",
+                        column: x => x.SongId,
+                        principalTable: "Songs",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_UserPreferredSongs_Users_UserId",
+                        column: x => x.UserId,
+                        principalTable: "Users",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "EventParticipants",
                 columns: table => new
                 {
@@ -75,6 +103,7 @@ namespace karaoke_place.Migrations
                     EventId = table.Column<int>(type: "integer", nullable: false),
                     UserId = table.Column<int>(type: "integer", nullable: false),
                     Role = table.Column<int>(type: "integer", nullable: false),
+                    Status = table.Column<int>(type: "integer", nullable: false),
                     CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
                 },
                 constraints: table =>
@@ -102,10 +131,7 @@ namespace karaoke_place.Migrations
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
                     EventId = table.Column<int>(type: "integer", nullable: false),
                     UserId = table.Column<int>(type: "integer", nullable: false),
-                    SongId = table.Column<int>(type: "integer", nullable: true),
-                    SongTitle = table.Column<string>(type: "text", nullable: false),
-                    ArtistName = table.Column<string>(type: "text", nullable: false),
-                    Status = table.Column<int>(type: "integer", nullable: false),
+                    SongId = table.Column<int>(type: "integer", nullable: false),
                     Order = table.Column<int>(type: "integer", nullable: false),
                     CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
                 },
@@ -123,7 +149,7 @@ namespace karaoke_place.Migrations
                         column: x => x.SongId,
                         principalTable: "Songs",
                         principalColumn: "Id",
-                        onDelete: ReferentialAction.SetNull);
+                        onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
                         name: "FK_SongProposals_Users_UserId",
                         column: x => x.UserId,
@@ -149,10 +175,9 @@ namespace karaoke_place.Migrations
                 column: "CreatedByUserId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_SongProposals_EventId_Order",
+                name: "IX_SongProposals_EventId",
                 table: "SongProposals",
-                columns: new[] { "EventId", "Order" },
-                unique: true);
+                column: "EventId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_SongProposals_SongId",
@@ -163,6 +188,22 @@ namespace karaoke_place.Migrations
                 name: "IX_SongProposals_UserId",
                 table: "SongProposals",
                 column: "UserId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_UserPreferredSongs_SongId",
+                table: "UserPreferredSongs",
+                column: "SongId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_UserPreferredSongs_UserId",
+                table: "UserPreferredSongs",
+                column: "UserId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_UserPreferredSongs_UserId_SongId",
+                table: "UserPreferredSongs",
+                columns: new[] { "UserId", "SongId" },
+                unique: true);
         }
 
         /// <inheritdoc />
@@ -173,6 +214,9 @@ namespace karaoke_place.Migrations
 
             migrationBuilder.DropTable(
                 name: "SongProposals");
+
+            migrationBuilder.DropTable(
+                name: "UserPreferredSongs");
 
             migrationBuilder.DropTable(
                 name: "KaraokeEvents");

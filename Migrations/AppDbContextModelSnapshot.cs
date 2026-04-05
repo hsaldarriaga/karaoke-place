@@ -22,7 +22,7 @@ namespace karaoke_place.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
-            modelBuilder.Entity("karaoke_place.Models.EventParticipant", b =>
+            modelBuilder.Entity("karaoke_place.Models.EventParticipantDB", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -40,9 +40,7 @@ namespace karaoke_place.Migrations
                         .HasColumnType("integer");
 
                     b.Property<int>("Status")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasDefaultValue(1);
+                        .HasColumnType("integer");
 
                     b.Property<int>("UserId")
                         .HasColumnType("integer");
@@ -57,7 +55,7 @@ namespace karaoke_place.Migrations
                     b.ToTable("EventParticipants");
                 });
 
-            modelBuilder.Entity("karaoke_place.Models.KaraokeEvent", b =>
+            modelBuilder.Entity("karaoke_place.Models.KaraokeEventDB", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -99,7 +97,7 @@ namespace karaoke_place.Migrations
                     b.ToTable("KaraokeEvents");
                 });
 
-            modelBuilder.Entity("karaoke_place.Models.Song", b =>
+            modelBuilder.Entity("karaoke_place.Models.SongDB", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -124,7 +122,7 @@ namespace karaoke_place.Migrations
                     b.ToTable("Songs");
                 });
 
-            modelBuilder.Entity("karaoke_place.Models.SongProposal", b =>
+            modelBuilder.Entity("karaoke_place.Models.SongProposalDB", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -149,6 +147,8 @@ namespace karaoke_place.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("EventId");
+
                     b.HasIndex("SongId");
 
                     b.HasIndex("UserId");
@@ -156,7 +156,7 @@ namespace karaoke_place.Migrations
                     b.ToTable("SongProposals");
                 });
 
-            modelBuilder.Entity("karaoke_place.Models.User", b =>
+            modelBuilder.Entity("karaoke_place.Models.UserDB", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -205,15 +205,15 @@ namespace karaoke_place.Migrations
                     b.ToTable("UserPreferredSongs");
                 });
 
-            modelBuilder.Entity("karaoke_place.Models.EventParticipant", b =>
+            modelBuilder.Entity("karaoke_place.Models.EventParticipantDB", b =>
                 {
-                    b.HasOne("karaoke_place.Models.KaraokeEvent", "Event")
+                    b.HasOne("karaoke_place.Models.KaraokeEventDB", "Event")
                         .WithMany("Participants")
                         .HasForeignKey("EventId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("karaoke_place.Models.User", "User")
+                    b.HasOne("karaoke_place.Models.UserDB", "User")
                         .WithMany("EventParticipations")
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -224,9 +224,9 @@ namespace karaoke_place.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("karaoke_place.Models.KaraokeEvent", b =>
+            modelBuilder.Entity("karaoke_place.Models.KaraokeEventDB", b =>
                 {
-                    b.HasOne("karaoke_place.Models.User", "CreatedByUser")
+                    b.HasOne("karaoke_place.Models.UserDB", "CreatedByUser")
                         .WithMany("CreatedEvents")
                         .HasForeignKey("CreatedByUserId")
                         .OnDelete(DeleteBehavior.Restrict)
@@ -235,21 +235,21 @@ namespace karaoke_place.Migrations
                     b.Navigation("CreatedByUser");
                 });
 
-            modelBuilder.Entity("karaoke_place.Models.SongProposal", b =>
+            modelBuilder.Entity("karaoke_place.Models.SongProposalDB", b =>
                 {
-                    b.HasOne("karaoke_place.Models.KaraokeEvent", "Event")
+                    b.HasOne("karaoke_place.Models.KaraokeEventDB", "Event")
                         .WithMany("SongProposals")
                         .HasForeignKey("EventId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("karaoke_place.Models.Song", "Song")
+                    b.HasOne("karaoke_place.Models.SongDB", "Song")
                         .WithMany("SongProposals")
                         .HasForeignKey("SongId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("karaoke_place.Models.User", "User")
+                    b.HasOne("karaoke_place.Models.UserDB", "User")
                         .WithMany("SongProposals")
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -264,13 +264,13 @@ namespace karaoke_place.Migrations
 
             modelBuilder.Entity("karaoke_place.Models.UserPreferredSongDB", b =>
                 {
-                    b.HasOne("karaoke_place.Models.Song", "Song")
+                    b.HasOne("karaoke_place.Models.SongDB", "Song")
                         .WithMany("PreferredByUsers")
                         .HasForeignKey("SongId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("karaoke_place.Models.User", "User")
+                    b.HasOne("karaoke_place.Models.UserDB", "User")
                         .WithMany("PreferredSongs")
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -281,21 +281,21 @@ namespace karaoke_place.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("karaoke_place.Models.KaraokeEvent", b =>
+            modelBuilder.Entity("karaoke_place.Models.KaraokeEventDB", b =>
                 {
                     b.Navigation("Participants");
 
                     b.Navigation("SongProposals");
                 });
 
-            modelBuilder.Entity("karaoke_place.Models.Song", b =>
+            modelBuilder.Entity("karaoke_place.Models.SongDB", b =>
                 {
                     b.Navigation("PreferredByUsers");
 
                     b.Navigation("SongProposals");
                 });
 
-            modelBuilder.Entity("karaoke_place.Models.User", b =>
+            modelBuilder.Entity("karaoke_place.Models.UserDB", b =>
                 {
                     b.Navigation("CreatedEvents");
 

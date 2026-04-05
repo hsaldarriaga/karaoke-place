@@ -80,16 +80,6 @@ To stop and remove the database volume too:
 ```bash
 docker compose down -v
 ```
-
-Seed users from inside the `api` container:
-
-```bash
-docker compose up -d db api
-docker compose exec api dotnet run seed.cs
-```
-
-> Run migrations first so the `Users` table exists.
-
 ---
 
 ## Useful commands
