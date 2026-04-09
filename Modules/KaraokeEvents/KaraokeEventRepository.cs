@@ -66,11 +66,13 @@ public class KaraokeEventRepository(AppDbContext db)
         };
     }
 
-    public async Task<IEnumerable<EventParticipantModel>> GetParticipantsAsync(int eventId)
+    public async Task<IEnumerable<EventParticipantsByEventModel>> GetParticipantsAsync(IEnumerable<int> eventIds)
     {
-        return await _db.EventParticipants
+        var eventIdList = eventIds.Distinct().ToList();
+
+        var participants = await _db.EventParticipants
             .AsNoTracking()
-            .Where(ep => ep.EventId == eventId)
+            .Where(ep => eventIdList.Contains(ep.EventId))
             .OrderBy(ep => ep.CreatedAt)
             .Select(ep => new EventParticipantModel
             {
@@ -82,13 +84,25 @@ public class KaraokeEventRepository(AppDbContext db)
                 CreatedAt = ep.CreatedAt
             })
             .ToListAsync();
+
+        var participantsByEventId = participants
+            .GroupBy(ep => ep.EventId)
+            .ToDictionary(group => group.Key, group => (IEnumerable<EventParticipantModel>)group.ToList());
+
+        return eventIdList.Select(eventId => new EventParticipantsByEventModel
+        {
+            EventId = eventId,
+            Participants = participantsByEventId.GetValueOrDefault(eventId, [])
+        });
     }
 
-    public async Task<IEnumerable<SongProposalModel>> GetSongProposalsAsync(int eventId)
+    public async Task<IEnumerable<SongProposalsByEventModel>> GetSongProposalsAsync(IEnumerable<int> eventIds)
     {
-        return await _db.SongProposals
+        var eventIdList = eventIds.Distinct().ToList();
+
+        var proposals = await _db.SongProposals
             .AsNoTracking()
-            .Where(sp => sp.EventId == eventId)
+            .Where(sp => eventIdList.Contains(sp.EventId))
             .OrderBy(sp => sp.Order)
             .ThenBy(sp => sp.CreatedAt)
             .Select(sp => new SongProposalModel
@@ -101,6 +115,16 @@ public class KaraokeEventRepository(AppDbContext db)
                 CreatedAt = sp.CreatedAt
             })
             .ToListAsync();
+
+        var proposalsByEventId = proposals
+            .GroupBy(sp => sp.EventId)
+            .ToDictionary(group => group.Key, group => (IEnumerable<SongProposalModel>)group.ToList());
+
+        return eventIdList.Select(eventId => new SongProposalsByEventModel
+        {
+            EventId = eventId,
+            SongProposals = proposalsByEventId.GetValueOrDefault(eventId, [])
+        });
     }
 
     public async Task<KaraokeEvent> AddAsync(KaraokeEventCreate model)

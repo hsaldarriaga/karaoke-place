@@ -17,14 +17,14 @@ public class KaraokeEventService(KaraokeEventRepository repo)
         return _repo.GetByIdAsync(id);
     }
 
-    public Task<IEnumerable<EventParticipantModel>> GetParticipantsAsync(int eventId)
+    public Task<IEnumerable<EventParticipantsByEventModel>> GetParticipantsAsync(IEnumerable<int> eventIds)
     {
-        return _repo.GetParticipantsAsync(eventId);
+        return _repo.GetParticipantsAsync(eventIds);
     }
 
-    public Task<IEnumerable<SongProposalModel>> GetSongProposalsAsync(int eventId)
+    public Task<IEnumerable<SongProposalsByEventModel>> GetSongProposalsAsync(IEnumerable<int> eventIds)
     {
-        return _repo.GetSongProposalsAsync(eventId);
+        return _repo.GetSongProposalsAsync(eventIds);
     }
 
     public Task<KaraokeEvent> CreateAsync(KaraokeEventCreate model)

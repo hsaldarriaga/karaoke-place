@@ -2,10 +2,10 @@ namespace karaoke_place.Modules.KaraokeEvents.Models;
 
 public class SongProposalModel
 {
-    public int Id { get; set; }
-    public int EventId { get; set; }
-    public int UserId { get; set; }
-    public int SongId { get; set; }
-    public int Order { get; set; }
-    public DateTime CreatedAt { get; set; }
+    public required int Id { get; set; }
+    public required int EventId { get; set; }
+    public required int UserId { get; set; }
+    public required int SongId { get; set; }
+    public required int Order { get; set; }
+    public required DateTime CreatedAt { get; set; }
 }

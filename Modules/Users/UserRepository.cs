@@ -19,10 +19,14 @@ public class UserRepository(AppDbContext db)
             .FirstOrDefaultAsync();
     }
 
-    public async Task<IEnumerable<UserModel>> GetAllAsync()
+    public async Task<IEnumerable<UserModel>> GetByIdsAsync(IEnumerable<int> userIds)
     {
+        var normalizedUserIds = userIds.Distinct().ToArray();
+
         return await _db.Users
             .AsNoTracking()
+            .Where(u => normalizedUserIds.Contains(u.Id))
+            .OrderBy(u => u.Id)
             .Select(u => new UserModel
             {
                 Id = u.Id,

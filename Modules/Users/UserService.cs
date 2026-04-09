@@ -27,9 +27,9 @@ public class UserService(UserRepository repo)
         return created.Id;
     }
 
-    public Task<IEnumerable<UserModel>> GetAllAsync()
+    public Task<IEnumerable<UserModel>> GetByIdsAsync(IEnumerable<int> userIds)
     {
-        return _repo.GetAllAsync();
+        return _repo.GetByIdsAsync(userIds);
     }
 
     public Task<UserModel?> GetByIdAsync(int id)

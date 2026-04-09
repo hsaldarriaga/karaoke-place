@@ -17,10 +17,31 @@ public class UsersController(UserService service, CurrentUserContext currentUser
     private readonly CurrentUserContext _currentUserContext = currentUserContext;
 
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<UserModel>>> Get()
+    public async Task<ActionResult<IEnumerable<UserModel>>> Get([FromQuery] int[] userIds)
     {
-        var users = await _service.GetAllAsync();
+        if (userIds == null || userIds.Length == 0)
+        {
+            return BadRequest(new
+            {
+                status = "USER_IDS_REQUIRED",
+                error = "Provide at least one userId query parameter."
+            });
+        }
+
+        var users = await _service.GetByIdsAsync(userIds);
         return Ok(users);
+    }
+
+    [HttpGet("me")]
+    public async Task<ActionResult<UserModel>> GetCurrentUser()
+    {
+        var userId = await _currentUserContext.GetUserIdAsync();
+        if (userId == null)
+            return Unauthorized(new { status = "USER_NOT_LINKED", error = "Authenticated user is not linked to a local user record." });
+
+        var user = await _service.GetByIdAsync(userId.Value);
+        if (user == null) return NotFound();
+        return Ok(user);
     }
 
     [HttpGet("{id:int}")]

@@ -32,23 +32,23 @@ public class KaraokeEventsController(KaraokeEventService service) : ControllerBa
         return Ok(ev);
     }
 
-    [HttpGet("{id:int}/participants")]
-    public async Task<ActionResult<IEnumerable<EventParticipantModel>>> GetParticipants(int id)
+    [HttpGet("participants")]
+    public async Task<ActionResult<IEnumerable<EventParticipantsByEventModel>>> GetParticipants([FromQuery] int[] eventIds)
     {
-        var ev = await _service.GetByIdAsync(id);
-        if (ev == null) return NotFound();
+        if (eventIds == null || eventIds.Length == 0)
+            return BadRequest(new { status = "EVENT_IDS_REQUIRED", error = "Provide at least one eventId query parameter." });
 
-        var participants = await _service.GetParticipantsAsync(id);
+        var participants = await _service.GetParticipantsAsync(eventIds);
         return Ok(participants);
     }
 
-    [HttpGet("{id:int}/songProposals")]
-    public async Task<ActionResult<IEnumerable<SongProposalModel>>> GetSongProposals(int id)
+    [HttpGet("songProposals")]
+    public async Task<ActionResult<IEnumerable<SongProposalsByEventModel>>> GetSongProposals([FromQuery] int[] eventIds)
     {
-        var ev = await _service.GetByIdAsync(id);
-        if (ev == null) return NotFound();
+        if (eventIds == null || eventIds.Length == 0)
+            return BadRequest(new { status = "EVENT_IDS_REQUIRED", error = "Provide at least one eventId query parameter." });
 
-        var proposals = await _service.GetSongProposalsAsync(id);
+        var proposals = await _service.GetSongProposalsAsync(eventIds);
         return Ok(proposals);
     }
 

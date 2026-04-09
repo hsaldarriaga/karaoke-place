@@ -5,8 +5,10 @@ using karaoke_place.Modules.KaraokeEvents;
 using karaoke_place.Modules.Users;
 using karaoke_place.Modules.Songs;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using DotNetEnv;
+using Microsoft.OpenApi;
 
 Env.Load();
 
@@ -53,7 +55,33 @@ builder.Services
     });
 
 builder.Services.AddAuthorization();
-builder.Services.AddOpenApi();
+builder.Services.AddOpenApi(options =>
+{
+    // ASP.NET Core OpenAPI (Microsoft.OpenApi v2) emits type as a JsonSchemaType
+    // flags enum. For int properties it sets Integer|String, which serialises as
+    // ["integer","string"]. Strip the String flag so ids resolve as number only.
+    options.AddSchemaTransformer((schema, context, cancellationToken) =>
+    {
+        if (schema.Type.HasValue
+            && schema.Type.Value.HasFlag(JsonSchemaType.Integer)
+            && schema.Type.Value.HasFlag(JsonSchemaType.String))
+        {
+            schema.Type = schema.Type.Value & ~JsonSchemaType.String;
+            schema.Pattern = null;
+        }
+
+        return Task.CompletedTask;
+    });
+});
+
+// Drive required vs optional directly from Nullable Reference Type annotations:
+// non-nullable properties (string, int, …) → required; nullable (string?, int?) → optional.
+builder.Services.Configure<JsonOptions>(options =>
+{
+    options.JsonSerializerOptions.RespectNullableAnnotations = true;
+    options.JsonSerializerOptions.RespectRequiredConstructorParameters = true;
+});
+
 builder.Services.AddScoped<DiagnosticService>();
 builder.Services.AddScoped<KaraokeEventRepository>();
 builder.Services.AddScoped<KaraokeEventService>();

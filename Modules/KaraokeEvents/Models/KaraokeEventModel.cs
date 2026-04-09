@@ -4,13 +4,13 @@ namespace karaoke_place.Modules.KaraokeEvents.Models;
 
 public class KaraokeEvent
 {
-    public int Id { get; set; }
-    public string Name { get; set; } = string.Empty;
-    public string Description { get; set; } = string.Empty;
-    public string Location { get; set; } = string.Empty;
-    public DateTime StartTime { get; set; }
-    public DateTime EndTime { get; set; }
-    public int CreatedByUserId { get; set; }
-    public bool IsActive { get; set; }
-    public DateTime CreatedAt { get; set; }
+    public required int Id { get; set; }
+    public required string Name { get; set; } = string.Empty;
+    public required string Description { get; set; } = string.Empty;
+    public required string Location { get; set; } = string.Empty;
+    public required DateTime StartTime { get; set; }
+    public required DateTime EndTime { get; set; }
+    public required int CreatedByUserId { get; set; }
+    public required bool IsActive { get; set; }
+    public required DateTime CreatedAt { get; set; }
 }
