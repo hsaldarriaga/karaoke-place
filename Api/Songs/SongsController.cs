@@ -38,28 +38,21 @@ public class SongsController(SongService service) : ControllerBase
         return Ok(songs);
     }
 
-    [HttpGet("by-events")]
-    public async Task<ActionResult<IEnumerable<SongsByEventModel>>> GetByEventIds([FromQuery] int[] eventIds, [FromQuery] int limit = 20)
+    [HttpGet("by-event")]
+    public async Task<ActionResult<SongsByEventModel>> GetByEventId(int eventId, [FromQuery] PaginationParams pagination)
     {
-        if (eventIds == null || eventIds.Length == 0)
+        if (eventId < 1)
         {
             return BadRequest(new
             {
-                status = "EVENT_IDS_REQUIRED",
-                error = "Provide at least one eventId query parameter."
+                status = "EVENT_ID_REQUIRED",
+                error = "Provide a valid eventId query parameter."
             });
         }
 
-        if (limit < 1)
-        {
-            return BadRequest(new
-            {
-                status = "INVALID_LIMIT",
-                error = "Limit must be greater than 0."
-            });
-        }
+        if (!ModelState.IsValid) return BadRequest(ModelState);
 
-        var songs = await _service.GetByEventIdsAsync(eventIds, limit);
+        var songs = await _service.GetByEventIdAsync(eventId, pagination.Page, pagination.PageSize);
         return Ok(songs);
     }
 

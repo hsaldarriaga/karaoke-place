@@ -62,44 +62,46 @@ public class SongRepository(AppDbContext db)
         };
     }
 
-    public async Task<IEnumerable<SongsByEventModel>> GetByEventIdsAsync(IEnumerable<int> eventIds, int limit)
+    public async Task<SongsByEventModel> GetByEventIdAsync(int eventId, int page = 1, int pageSize = 20)
     {
-        var eventIdList = eventIds.Distinct().ToList();
-
         var proposedSongs = await _db.SongProposals
             .AsNoTracking()
-            .Where(sp => eventIdList.Contains(sp.EventId))
-            .OrderBy(sp => sp.EventId)
-            .ThenBy(sp => sp.Order)
+            .Where(sp => sp.EventId == eventId)
+            .OrderBy(sp => sp.Order)
             .ThenBy(sp => sp.CreatedAt)
-            .Select(sp => new
+            .ThenBy(sp => sp.Id)
+            .Select(sp => new SongByEventModel
             {
-                sp.EventId,
-                Song = new SongModel
-                {
-                    Id = sp.Song.Id,
-                    ExternalId = sp.Song.ExternalId,
-                    Title = sp.Song.Title,
-                    Artist = sp.Song.Artist
-                }
+                Id = sp.Song.Id,
+                UserId = sp.UserId,
+                ExternalId = sp.Song.ExternalId,
+                Title = sp.Song.Title,
+                Artist = sp.Song.Artist
             })
             .ToListAsync();
 
-        var songsByEventId = proposedSongs
-            .GroupBy(x => x.EventId)
-            .ToDictionary(
-                group => group.Key,
-                group => (IEnumerable<SongModel>)group
-                    .GroupBy(x => x.Song.Id)
-                    .Select(songGroup => songGroup.First().Song)
-                    .Take(limit)
-                    .ToList());
+        var uniqueSongs = proposedSongs
+            .GroupBy(song => song.Id)
+            .Select(songGroup => songGroup.First())
+            .ToList();
 
-        return eventIdList.Select(eventId => new SongsByEventModel
+        var totalCount = uniqueSongs.Count;
+        var items = uniqueSongs
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToList();
+
+        return new SongsByEventModel
         {
             EventId = eventId,
-            Songs = songsByEventId.GetValueOrDefault(eventId, [])
-        });
+            Songs = new PagedResult<SongByEventModel>
+            {
+                Page = page,
+                PageSize = pageSize,
+                TotalCount = totalCount,
+                Items = items
+            }
+        };
     }
 
     public async Task<SongModel?> GetByIdAsync(int id)

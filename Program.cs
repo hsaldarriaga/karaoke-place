@@ -55,6 +55,25 @@ builder.Services
     });
 
 builder.Services.AddAuthorization();
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen(options =>
+{
+    options.SwaggerDoc("v1", new OpenApiInfo
+    {
+        Title = "Karaoke Place API",
+        Version = "v1"
+    });
+
+    options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    {
+        Name = "Authorization",
+        In = ParameterLocation.Header,
+        Type = SecuritySchemeType.Http,
+        Scheme = "bearer",
+        BearerFormat = "JWT",
+        Description = "Enter a valid Auth0 bearer token."
+    });
+});
 builder.Services.AddOpenApi(options =>
 {
     // ASP.NET Core OpenAPI (Microsoft.OpenApi v2) emits type as a JsonSchemaType
@@ -96,6 +115,12 @@ builder.Services.AddControllers();
 var app = builder.Build();
 
 app.UseCors("Frontend");
+app.UseSwagger();
+app.UseSwaggerUI(options =>
+{
+    options.SwaggerEndpoint("/swagger/v1/swagger.json", "Karaoke Place API v1");
+    options.RoutePrefix = "swagger";
+});
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapOpenApi();

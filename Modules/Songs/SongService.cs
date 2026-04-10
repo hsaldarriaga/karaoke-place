@@ -17,9 +17,9 @@ public class SongService(SongRepository repo)
         return _repo.GetByUserIdAsync(userId, page, pageSize);
     }
 
-    public Task<IEnumerable<SongsByEventModel>> GetByEventIdsAsync(IEnumerable<int> eventIds, int limit)
+    public Task<SongsByEventModel> GetByEventIdAsync(int eventId, int page = 1, int pageSize = 20)
     {
-        return _repo.GetByEventIdsAsync(eventIds, limit);
+        return _repo.GetByEventIdAsync(eventId, page, pageSize);
     }
 
     public Task<SongModel?> GetByIdAsync(int id)

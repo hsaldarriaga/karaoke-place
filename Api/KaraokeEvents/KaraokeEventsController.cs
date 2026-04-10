@@ -43,12 +43,11 @@ public class KaraokeEventsController(KaraokeEventService service) : ControllerBa
     }
 
     [HttpGet("songProposals")]
-    public async Task<ActionResult<IEnumerable<SongProposalsByEventModel>>> GetSongProposals([FromQuery] int[] eventIds)
+    public async Task<ActionResult<IEnumerable<SongProposalsByEventModel>>> GetSongProposals([FromQuery] GetSongProposalsQueryDto query)
     {
-        if (eventIds == null || eventIds.Length == 0)
-            return BadRequest(new { status = "EVENT_IDS_REQUIRED", error = "Provide at least one eventId query parameter." });
+        if (!ModelState.IsValid) return BadRequest(ModelState);
 
-        var proposals = await _service.GetSongProposalsAsync(eventIds);
+        var proposals = await _service.GetSongProposalsAsync(query.EventIds, query.LimitPerEvent);
         return Ok(proposals);
     }
 

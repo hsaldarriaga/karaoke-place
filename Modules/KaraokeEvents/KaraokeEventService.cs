@@ -22,9 +22,9 @@ public class KaraokeEventService(KaraokeEventRepository repo)
         return _repo.GetParticipantsAsync(eventIds);
     }
 
-    public Task<IEnumerable<SongProposalsByEventModel>> GetSongProposalsAsync(IEnumerable<int> eventIds)
+    public Task<IEnumerable<SongProposalsByEventModel>> GetSongProposalsAsync(IEnumerable<int> eventIds, int limitPerEvent = 20)
     {
-        return _repo.GetSongProposalsAsync(eventIds);
+        return _repo.GetSongProposalsAsync(eventIds, limitPerEvent);
     }
 
     public Task<KaraokeEvent> CreateAsync(KaraokeEventCreate model)

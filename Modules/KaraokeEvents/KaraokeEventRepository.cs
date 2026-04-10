@@ -2,6 +2,7 @@ using karaoke_place.Data;
 using karaoke_place.Models;
 using karaoke_place.Modules.Common;
 using karaoke_place.Modules.KaraokeEvents.Models;
+using karaoke_place.Modules.Songs.Models;
 using Microsoft.EntityFrameworkCore;
 
 namespace karaoke_place.Modules.KaraokeEvents;
@@ -96,15 +97,20 @@ public class KaraokeEventRepository(AppDbContext db)
         });
     }
 
-    public async Task<IEnumerable<SongProposalsByEventModel>> GetSongProposalsAsync(IEnumerable<int> eventIds)
+    public async Task<IEnumerable<SongProposalsByEventModel>> GetSongProposalsAsync(IEnumerable<int> eventIds, int limitPerEvent = 20)
     {
         var eventIdList = eventIds.Distinct().ToList();
+        if (eventIdList.Count == 0) return [];
 
         var proposals = await _db.SongProposals
             .AsNoTracking()
             .Where(sp => eventIdList.Contains(sp.EventId))
-            .OrderBy(sp => sp.Order)
-            .ThenBy(sp => sp.CreatedAt)
+            .GroupBy(sp => sp.EventId)
+            .SelectMany(group => group
+                .OrderBy(sp => sp.Order)
+                .ThenBy(sp => sp.CreatedAt)
+                .ThenBy(sp => sp.Id)
+                .Take(limitPerEvent))
             .Select(sp => new SongProposalModel
             {
                 Id = sp.Id,
@@ -112,7 +118,14 @@ public class KaraokeEventRepository(AppDbContext db)
                 UserId = sp.UserId,
                 SongId = sp.SongId,
                 Order = sp.Order,
-                CreatedAt = sp.CreatedAt
+                CreatedAt = sp.CreatedAt,
+                Song = new SongModel
+                {
+                    Id = sp.Song.Id,
+                    ExternalId = sp.Song.ExternalId,
+                    Title = sp.Song.Title,
+                    Artist = sp.Song.Artist
+                }
             })
             .ToListAsync();
 
