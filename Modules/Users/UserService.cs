@@ -52,9 +52,9 @@ public class UserService(UserRepository repo)
         return _repo.UpdateAsync(id, model);
     }
 
-    public Task<(bool ok, string? error)> AddPreferredSongAsync(int userId, int songId)
+    public Task<(bool ok, string? error)> AddPreferredSongAsync(int userId, string externalId, string title, string artist)
     {
-        return _repo.AddPreferredSongAsync(userId, songId);
+        return _repo.AddPreferredSongAsync(userId, externalId, title, artist);
     }
 
     public Task<(bool ok, string? error)> RemovePreferredSongAsync(int userId, int songId)

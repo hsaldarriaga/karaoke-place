@@ -18,10 +18,14 @@ public class CreateKaraokeEventDto : IValidatableObject
     public string Location { get; set; } = string.Empty;
 
     [Required]
-    public DateTime StartTime { get; set; }
+    [StringLength(300)]
+    public string Coordinates { get; set; } = string.Empty;
 
     [Required]
-    public DateTime EndTime { get; set; }
+    public DateTime StartTime { get; set; }
+
+    [Range(1, int.MaxValue)]
+    public int Hours { get; set; }
 
     [Range(1, int.MaxValue)]
     public int CreatedByUserId { get; set; }
@@ -33,11 +37,8 @@ public class CreateKaraokeEventDto : IValidatableObject
         if (StartTime == default)
             yield return new ValidationResult("StartTime is required.", new[] { nameof(StartTime) });
 
-        if (EndTime == default)
-            yield return new ValidationResult("EndTime is required.", new[] { nameof(EndTime) });
-
-        if (StartTime != default && EndTime != default && StartTime >= EndTime)
-            yield return new ValidationResult("StartTime must be before EndTime.", new[] { nameof(StartTime), nameof(EndTime) });
+        if (Hours <= 0)
+            yield return new ValidationResult("Hours must be greater than 0.", new[] { nameof(Hours) });
 
         if (CreatedByUserId <= 0)
             yield return new ValidationResult("CreatedByUserId must be a positive integer.", new[] { nameof(CreatedByUserId) });

@@ -8,6 +8,7 @@ public class UserPreferredSongDB
     public int Id { get; set; }
     public int UserId { get; set; }
     public int SongId { get; set; }
+    public int Sort { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     public UserDB User { get; set; } = null!;

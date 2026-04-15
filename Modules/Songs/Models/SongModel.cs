@@ -6,4 +6,5 @@ public class SongModel
     public required string ExternalId { get; set; } = string.Empty;
     public required string Title { get; set; } = string.Empty;
     public required string Artist { get; set; } = string.Empty;
+    public int? Order { get; set; }
 }

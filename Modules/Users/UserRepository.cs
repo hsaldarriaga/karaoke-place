@@ -31,6 +31,7 @@ public class UserRepository(AppDbContext db)
             {
                 Id = u.Id,
                 Email = u.Email,
+                FirstName = u.FirstName,
                 CreatedAt = u.CreatedAt
             })
             .ToListAsync();
@@ -45,6 +46,7 @@ public class UserRepository(AppDbContext db)
             {
                 Id = u.Id,
                 Email = u.Email,
+                FirstName = u.FirstName,
                 CreatedAt = u.CreatedAt
             })
             .FirstOrDefaultAsync();
@@ -55,13 +57,15 @@ public class UserRepository(AppDbContext db)
         return await _db.UserPreferredSongs
             .AsNoTracking()
             .Where(ps => ps.UserId == userId)
-            .OrderBy(ps => ps.CreatedAt)
+            .OrderBy(ps => ps.Sort)
+            .ThenBy(ps => ps.CreatedAt)
             .Select(ps => new SongModel
             {
                 Id = ps.Song.Id,
                 ExternalId = ps.Song.ExternalId,
                 Title = ps.Song.Title,
-                Artist = ps.Song.Artist
+                Artist = ps.Song.Artist,
+                Order = ps.Sort
             })
             .ToListAsync();
     }
@@ -77,6 +81,7 @@ public class UserRepository(AppDbContext db)
                 {
                     Id = u.Id,
                     Email = u.Email,
+                    FirstName = u.FirstName,
                     CreatedAt = u.CreatedAt
                 })
                 .FirstOrDefaultAsync();
@@ -88,6 +93,7 @@ public class UserRepository(AppDbContext db)
         var user = new UserDB
         {
             Email = model.Email,
+            FirstName = model.FirstName,
             Auth0Subject = model.Auth0Subject,
             CreatedAt = DateTime.UtcNow
         };
@@ -99,6 +105,7 @@ public class UserRepository(AppDbContext db)
         {
             Id = user.Id,
             Email = user.Email,
+            FirstName = user.FirstName,
             CreatedAt = user.CreatedAt
         };
     }
@@ -109,27 +116,43 @@ public class UserRepository(AppDbContext db)
         if (user == null) return false;
 
         user.Email = model.Email;
+        user.FirstName = model.FirstName ?? string.Empty;
 
         await _db.SaveChangesAsync();
         return true;
     }
 
-    public async Task<(bool ok, string? error)> AddPreferredSongAsync(int userId, int songId)
+    public async Task<(bool ok, string? error)> AddPreferredSongAsync(int userId, string externalId, string title, string artist)
     {
         var userExists = await _db.Users.AnyAsync(u => u.Id == userId);
         if (!userExists) return (false, "UserNotFound");
 
-        var songExists = await _db.Songs.AnyAsync(s => s.Id == songId);
-        if (!songExists) return (false, "SongNotFound");
+        var song = await _db.Songs.FirstOrDefaultAsync(s => s.ExternalId == externalId);
+        if (song == null)
+        {
+            song = new SongDB
+            {
+                ExternalId = externalId,
+                Title = title,
+                Artist = artist
+            };
+            _db.Songs.Add(song);
+            await _db.SaveChangesAsync();
+        }
 
         var alreadyPreferred = await _db.UserPreferredSongs
-            .AnyAsync(ps => ps.UserId == userId && ps.SongId == songId);
+            .AnyAsync(ps => ps.UserId == userId && ps.SongId == song.Id);
         if (alreadyPreferred) return (false, "AlreadyPreferred");
+
+        var nextSort = (await _db.UserPreferredSongs
+            .Where(ps => ps.UserId == userId)
+            .MaxAsync(ps => (int?)ps.Sort) ?? 0) + 1;
 
         var preferredSong = new UserPreferredSongDB
         {
             UserId = userId,
-            SongId = songId,
+            SongId = song.Id,
+            Sort = nextSort,
             CreatedAt = DateTime.UtcNow
         };
 

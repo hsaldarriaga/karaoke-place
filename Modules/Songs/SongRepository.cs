@@ -32,25 +32,25 @@ public class SongRepository(AppDbContext db)
 
     public async Task<PagedResult<SongModel>> GetByUserIdAsync(int userId, int page = 1, int pageSize = 20)
     {
-        var query = _db.Songs
+        var query = _db.UserPreferredSongs
             .AsNoTracking()
-            .Where(s => _db.UserPreferredSongs.Any(ps => ps.UserId == userId && ps.SongId == s.Id))
-            .OrderBy(s => s.Title)
-            .ThenBy(s => s.Artist)
-            .ThenBy(s => s.Id);
+            .Where(ps => ps.UserId == userId)
+            .OrderBy(ps => ps.Sort)
+            .ThenBy(ps => ps.CreatedAt)
+            .Select(ps => new SongModel
+            {
+                Id = ps.Song.Id,
+                ExternalId = ps.Song.ExternalId,
+                Title = ps.Song.Title,
+                Artist = ps.Song.Artist,
+                Order = ps.Sort
+            });
 
         var totalCount = await query.CountAsync();
 
         var items = await query
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
-            .Select(s => new SongModel
-            {
-                Id = s.Id,
-                ExternalId = s.ExternalId,
-                Title = s.Title,
-                Artist = s.Artist
-            })
             .ToListAsync();
 
         return new PagedResult<SongModel>

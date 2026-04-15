@@ -72,6 +72,7 @@ public class UsersController(UserService service, CurrentUserContext currentUser
         var model = new UserCreate
         {
             Email = dto.Email,
+            FirstName = dto.FirstName,
             Auth0Subject = _currentUserContext.GetSubject()
         };
 
@@ -90,7 +91,8 @@ public class UsersController(UserService service, CurrentUserContext currentUser
 
         var model = new UserUpdate
         {
-            Email = dto.Email
+            Email = dto.Email,
+            FirstName = dto.FirstName
         };
 
         var ok = await _service.UpdateAsync(userId.Value, model);
@@ -108,13 +110,11 @@ public class UsersController(UserService service, CurrentUserContext currentUser
         if (userId == null)
             return Unauthorized(new { status = "USER_NOT_LINKED", error = "Authenticated user is not linked to a local user record." });
 
-        var (ok, error) = await _service.AddPreferredSongAsync(userId.Value, dto.SongId);
+        var (ok, error) = await _service.AddPreferredSongAsync(userId.Value, dto.ExternalId, dto.Title, dto.Artist);
         if (!ok)
         {
             if (error == "UserNotFound")
                 return NotFound(new { status = "USER_NOT_FOUND", error = "User not found." });
-            if (error == "SongNotFound")
-                return NotFound(new { status = "SONG_NOT_FOUND", error = "Song not found." });
             if (error == "AlreadyPreferred")
                 return Conflict(new { status = "ALREADY_PREFERRED", error = "Song is already in user's preferred songs." });
 

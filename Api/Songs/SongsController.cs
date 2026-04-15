@@ -1,5 +1,4 @@
 using karaoke_place.Api.Common;
-using karaoke_place.Api.Songs.Dto;
 using karaoke_place.Modules.Common;
 using karaoke_place.Modules.Songs;
 using karaoke_place.Modules.Songs.Models;
@@ -62,21 +61,5 @@ public class SongsController(SongService service) : ControllerBase
         var song = await _service.GetByIdAsync(id);
         if (song == null) return NotFound();
         return Ok(song);
-    }
-
-    [HttpPost]
-    public async Task<ActionResult<SongModel>> Create(CreateSongDto dto)
-    {
-        if (!ModelState.IsValid) return BadRequest(ModelState);
-
-        var model = new SongCreate
-        {
-            ExternalId = dto.ExternalId,
-            Title = dto.Title,
-            Artist = dto.Artist
-        };
-
-        var created = await _service.CreateAsync(model);
-        return Created($"/api/songs/{created.Id}", created);
     }
 }

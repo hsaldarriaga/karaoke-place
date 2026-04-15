@@ -4,6 +4,7 @@ using karaoke_place.Modules.Common;
 using karaoke_place.Modules.KaraokeEvents.Models;
 using karaoke_place.Modules.Songs.Models;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 
 namespace karaoke_place.Modules.KaraokeEvents;
 
@@ -11,13 +12,24 @@ public class KaraokeEventRepository(AppDbContext db)
 {
     private readonly AppDbContext _db = db;
 
-    public async Task<PagedResult<KaraokeEvent>> GetAllAsync(bool? isActive = null, int page = 1, int pageSize = 20)
+    public async Task<PagedResult<KaraokeEvent>> GetAllAsync(bool? isActive = null, int? createdByUserId = null, int? participantUserId = null, int page = 1, int pageSize = 20)
     {
         var query = _db.KaraokeEvents.AsNoTracking();
 
         if (isActive.HasValue)
         {
             query = query.Where(e => e.IsActive == isActive.Value);
+        }
+
+        if (createdByUserId.HasValue)
+        {
+            query = query.Where(e => e.CreatedByUserId == createdByUserId.Value);
+        }
+
+        if (participantUserId.HasValue)
+        {
+            query = query.Where(e => e.CreatedByUserId != participantUserId.Value &&
+                e.Participants.Any(p => p.UserId == participantUserId.Value));
         }
 
         var totalCount = await query.CountAsync();
@@ -32,8 +44,9 @@ public class KaraokeEventRepository(AppDbContext db)
                 Name = e.Name,
                 Description = e.Description,
                 Location = e.Location,
+                Coordinates = e.Coordinates,
                 StartTime = e.StartTime,
-                EndTime = e.EndTime,
+                Hours = e.Hours,
                 CreatedByUserId = e.CreatedByUserId,
                 IsActive = e.IsActive,
                 CreatedAt = e.CreatedAt
@@ -59,12 +72,50 @@ public class KaraokeEventRepository(AppDbContext db)
             Name = e.Name,
             Description = e.Description,
             Location = e.Location,
+            Coordinates = e.Coordinates,
             StartTime = e.StartTime,
-            EndTime = e.EndTime,
+            Hours = e.Hours,
             CreatedByUserId = e.CreatedByUserId,
             IsActive = e.IsActive,
             CreatedAt = e.CreatedAt
         };
+    }
+
+    public async Task<IEnumerable<ParticipantCountByEventModel>> GetParticipantCountsAsync(IEnumerable<int> eventIds)
+    {
+        var eventIdList = eventIds.Distinct().ToList();
+
+        var counts = await _db.EventParticipants
+            .AsNoTracking()
+            .Where(ep => eventIdList.Contains(ep.EventId))
+            .GroupBy(ep => ep.EventId)
+            .Select(g => new ParticipantCountByEventModel
+            {
+                EventId = g.Key,
+                Count = g.Count()
+            })
+            .ToListAsync();
+
+        var countsByEventId = counts.ToDictionary(c => c.EventId);
+
+        return eventIdList.Select(eventId => countsByEventId.TryGetValue(eventId, out var c)
+            ? c
+            : new ParticipantCountByEventModel { EventId = eventId, Count = 0 });
+    }
+
+    public async Task<bool> IsUserAuthorizedForEventsAsync(IEnumerable<int> eventIds, int userId)
+    {
+        var eventIdList = eventIds.Distinct().ToList();
+
+        var authorizedCount = await _db.KaraokeEvents
+            .AsNoTracking()
+            .Where(e => eventIdList.Contains(e.Id) && (
+                e.CreatedByUserId == userId ||
+                e.Participants.Any(p => p.UserId == userId)
+            ))
+            .CountAsync();
+
+        return authorizedCount == eventIdList.Count;
     }
 
     public async Task<IEnumerable<EventParticipantsByEventModel>> GetParticipantsAsync(IEnumerable<int> eventIds)
@@ -88,7 +139,7 @@ public class KaraokeEventRepository(AppDbContext db)
 
         var participantsByEventId = participants
             .GroupBy(ep => ep.EventId)
-            .ToDictionary(group => group.Key, group => (IEnumerable<EventParticipantModel>)group.ToList());
+            .ToDictionary(group => group.Key, group => (IEnumerable<EventParticipantModel>)[.. group]);
 
         return eventIdList.Select(eventId => new EventParticipantsByEventModel
         {
@@ -102,41 +153,76 @@ public class KaraokeEventRepository(AppDbContext db)
         var eventIdList = eventIds.Distinct().ToList();
         if (eventIdList.Count == 0) return [];
 
-        var proposals = await _db.SongProposals
-            .AsNoTracking()
-            .Where(sp => eventIdList.Contains(sp.EventId))
-            .GroupBy(sp => sp.EventId)
-            .SelectMany(group => group
-                .OrderBy(sp => sp.Order)
-                .ThenBy(sp => sp.CreatedAt)
-                .ThenBy(sp => sp.Id)
-                .Take(limitPerEvent))
-            .Select(sp => new SongProposalModel
-            {
-                Id = sp.Id,
-                EventId = sp.EventId,
-                UserId = sp.UserId,
-                SongId = sp.SongId,
-                Order = sp.Order,
-                CreatedAt = sp.CreatedAt,
-                Song = new SongModel
-                {
-                    Id = sp.Song.Id,
-                    ExternalId = sp.Song.ExternalId,
-                    Title = sp.Song.Title,
-                    Artist = sp.Song.Artist
-                }
-            })
-            .ToListAsync();
+        var eventIdParams = string.Join(",", eventIdList.Select((id, i) => $"@p{i}"));
+        var parameters = eventIdList.Select((id, i) => new NpgsqlParameter($"p{i}", id)).ToArray();
 
-        var proposalsByEventId = proposals
+        var sql = $@"
+            SELECT sp.""Id"", sp.""EventId"", sp.""UserId"", sp.""SongId"", sp.""Order"", sp.""CreatedAt"",
+                s.""Id"" AS ""Song_Id"", s.""ExternalId"", s.""Title"", s.""Artist""
+            FROM (
+                SELECT *, ROW_NUMBER() OVER (PARTITION BY ""EventId"" ORDER BY ""Order"", ""CreatedAt"", ""Id"") AS rn
+                FROM ""SongProposals""
+                WHERE ""EventId"" IN ({eventIdParams})
+            ) sp
+            JOIN ""Songs"" s ON sp.""SongId"" = s.""Id""
+            WHERE sp.rn <= @limitPerEvent
+            ORDER BY sp.""EventId"", sp.""Order"", sp.""CreatedAt"", sp.""Id"";
+        ";
+
+        var limitParam = new NpgsqlParameter("limitPerEvent", limitPerEvent);
+        var allParams = parameters.Concat(new[] { limitParam }).ToArray();
+
+        var rawResults = new List<RawSongProposalRow>();
+        using (var conn = _db.Database.GetDbConnection())
+        {
+            await conn.OpenAsync();
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = sql;
+            cmd.Parameters.AddRange(allParams);
+            using var reader = await cmd.ExecuteReaderAsync();
+            while (await reader.ReadAsync())
+            {
+                rawResults.Add(new RawSongProposalRow
+                {
+                    Id = reader.GetInt32(0),
+                    EventId = reader.GetInt32(1),
+                    UserId = reader.GetInt32(2),
+                    SongId = reader.GetInt32(3),
+                    Order = reader.GetInt32(4),
+                    CreatedAt = reader.GetDateTime(5),
+                    Song_Id = reader.GetInt32(6),
+                    ExternalId = reader.GetString(7),
+                    Title = reader.GetString(8),
+                    Artist = reader.GetString(9)
+                });
+            }
+        }
+
+        var proposals = rawResults.Select(r => new SongProposalModel
+        {
+            Id = r.Id,
+            EventId = r.EventId,
+            UserId = r.UserId,
+            SongId = r.SongId,
+            Order = r.Order,
+            CreatedAt = r.CreatedAt,
+            Song = new SongModel
+            {
+                Id = r.Song_Id,
+                ExternalId = r.ExternalId,
+                Title = r.Title,
+                Artist = r.Artist
+            }
+        }).ToList();
+
+        var grouped = proposals
             .GroupBy(sp => sp.EventId)
-            .ToDictionary(group => group.Key, group => (IEnumerable<SongProposalModel>)group.ToList());
+            .ToDictionary(g => g.Key, g => (IEnumerable<SongProposalModel>)[.. g]);
 
         return eventIdList.Select(eventId => new SongProposalsByEventModel
         {
             EventId = eventId,
-            SongProposals = proposalsByEventId.GetValueOrDefault(eventId, [])
+            SongProposals = grouped.GetValueOrDefault(eventId, [])
         });
     }
 
@@ -147,15 +233,23 @@ public class KaraokeEventRepository(AppDbContext db)
             Name = model.Name,
             Description = model.Description ?? string.Empty,
             Location = model.Location,
+            Coordinates = model.Coordinates,
             StartTime = model.StartTime,
-            EndTime = model.EndTime,
+            Hours = model.Hours,
             CreatedByUserId = model.CreatedByUserId,
             IsActive = true,
             CreatedAt = DateTime.UtcNow
         };
 
+        await using var transaction = await _db.Database.BeginTransactionAsync();
+
         _db.KaraokeEvents.Add(e);
         await _db.SaveChangesAsync();
+
+        await CopyPreferredSongsToSongProposalsAsync(e.Id, e.CreatedByUserId);
+        await _db.SaveChangesAsync();
+
+        await transaction.CommitAsync();
 
         return new KaraokeEvent
         {
@@ -163,8 +257,9 @@ public class KaraokeEventRepository(AppDbContext db)
             Name = e.Name,
             Description = e.Description,
             Location = e.Location,
+            Coordinates = e.Coordinates,
             StartTime = e.StartTime,
-            EndTime = e.EndTime,
+            Hours = e.Hours,
             CreatedByUserId = e.CreatedByUserId,
             IsActive = e.IsActive,
             CreatedAt = e.CreatedAt
@@ -179,8 +274,9 @@ public class KaraokeEventRepository(AppDbContext db)
         e.Name = model.Name;
         e.Description = model.Description ?? string.Empty;
         e.Location = model.Location;
+        e.Coordinates = model.Coordinates;
         e.StartTime = model.StartTime;
-        e.EndTime = model.EndTime;
+        e.Hours = model.Hours;
         e.CreatedByUserId = model.CreatedByUserId;
 
         await _db.SaveChangesAsync();
@@ -201,7 +297,7 @@ public class KaraokeEventRepository(AppDbContext db)
         var e = await _db.KaraokeEvents.FindAsync(id);
         if (e == null) return (null, "NotFound");
 
-        if (e.EndTime <= now) return (null, "EndTimePassed");
+        if (e.StartTime.AddHours(e.Hours) <= now) return (null, "EventEnded");
 
         e.IsActive = isActive;
         await _db.SaveChangesAsync();
@@ -212,8 +308,9 @@ public class KaraokeEventRepository(AppDbContext db)
             Name = e.Name,
             Description = e.Description,
             Location = e.Location,
+            Coordinates = e.Coordinates,
             StartTime = e.StartTime,
-            EndTime = e.EndTime,
+            Hours = e.Hours,
             CreatedByUserId = e.CreatedByUserId,
             IsActive = e.IsActive,
             CreatedAt = e.CreatedAt

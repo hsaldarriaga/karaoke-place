@@ -7,14 +7,24 @@ public class KaraokeEventService(KaraokeEventRepository repo)
 {
     private readonly KaraokeEventRepository _repo = repo;
 
-    public Task<PagedResult<KaraokeEvent>> GetAllAsync(bool? isActive = null, int page = 1, int pageSize = 20)
+    public Task<PagedResult<KaraokeEvent>> GetAllAsync(bool? isActive = null, int? createdByUserId = null, int? participantUserId = null, int page = 1, int pageSize = 20)
     {
-        return _repo.GetAllAsync(isActive, page, pageSize);
+        return _repo.GetAllAsync(isActive, createdByUserId, participantUserId, page, pageSize);
     }
 
     public Task<KaraokeEvent?> GetByIdAsync(int id)
     {
         return _repo.GetByIdAsync(id);
+    }
+
+    public Task<IEnumerable<ParticipantCountByEventModel>> GetParticipantCountsAsync(IEnumerable<int> eventIds)
+    {
+        return _repo.GetParticipantCountsAsync(eventIds);
+    }
+
+    public Task<bool> IsUserAuthorizedForEventsAsync(IEnumerable<int> eventIds, int userId)
+    {
+        return _repo.IsUserAuthorizedForEventsAsync(eventIds, userId);
     }
 
     public Task<IEnumerable<EventParticipantsByEventModel>> GetParticipantsAsync(IEnumerable<int> eventIds)
@@ -47,7 +57,7 @@ public class KaraokeEventService(KaraokeEventRepository repo)
         var now = DateTime.UtcNow;
         var (model, error) = await _repo.UpdateIsActive(id, now, true);
         if (error == "NotFound") return (false, "NotFound");
-        if (error == "EndTimePassed") return (false, "EndTimePassed");
+        if (error == "EventEnded") return (false, "EventEnded");
         if (model == null) return (false, "Error");
         return (true, null);
     }

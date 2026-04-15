@@ -9,18 +9,21 @@ namespace karaoke_place.Api.KaraokeEvents;
 
 [ApiController]
 [Route("api/[controller]")]
-public class KaraokeEventsController(KaraokeEventService service) : ControllerBase
+public class KaraokeEventsController(KaraokeEventService service, CurrentUserContext currentUser) : ControllerBase
 {
     private readonly KaraokeEventService _service = service;
+    private readonly CurrentUserContext _currentUser = currentUser;
 
     [HttpGet]
     public async Task<ActionResult<PagedResult<KaraokeEvent>>> Get(
         [FromQuery] bool? isActive,
+        [FromQuery] int? createdByUserId,
+        [FromQuery] int? participantUserId,
         [FromQuery] PaginationParams pagination)
     {
         if (!ModelState.IsValid) return BadRequest(ModelState);
 
-        var result = await _service.GetAllAsync(isActive, pagination.Page, pagination.PageSize);
+        var result = await _service.GetAllAsync(isActive, createdByUserId, participantUserId, pagination.Page, pagination.PageSize);
         return Ok(result);
     }
 
@@ -32,11 +35,29 @@ public class KaraokeEventsController(KaraokeEventService service) : ControllerBa
         return Ok(ev);
     }
 
+    [HttpGet("participantCounts")]
+    public async Task<ActionResult<IEnumerable<ParticipantCountByEventModel>>> GetParticipantCounts([FromQuery] int[] eventIds)
+    {
+        if (eventIds == null || eventIds.Length == 0)
+            return BadRequest(new { status = "EVENT_IDS_REQUIRED", error = "Provide at least one eventId query parameter." });
+
+        var counts = await _service.GetParticipantCountsAsync(eventIds);
+        return Ok(counts);
+    }
+
     [HttpGet("participants")]
     public async Task<ActionResult<IEnumerable<EventParticipantsByEventModel>>> GetParticipants([FromQuery] int[] eventIds)
     {
         if (eventIds == null || eventIds.Length == 0)
             return BadRequest(new { status = "EVENT_IDS_REQUIRED", error = "Provide at least one eventId query parameter." });
+
+        var userId = await _currentUser.GetUserIdAsync();
+        if (userId == null)
+            return Unauthorized(new { status = "UNAUTHORIZED", error = "Authentication required." });
+
+        var authorized = await _service.IsUserAuthorizedForEventsAsync(eventIds, userId.Value);
+        if (!authorized)
+            return Forbid();
 
         var participants = await _service.GetParticipantsAsync(eventIds);
         return Ok(participants);
@@ -61,8 +82,9 @@ public class KaraokeEventsController(KaraokeEventService service) : ControllerBa
             Name = dto.Name,
             Description = dto.Description,
             Location = dto.Location,
+            Coordinates = dto.Coordinates,
             StartTime = dto.StartTime,
-            EndTime = dto.EndTime,
+            Hours = dto.Hours,
             CreatedByUserId = dto.CreatedByUserId,
         };
 
@@ -80,8 +102,9 @@ public class KaraokeEventsController(KaraokeEventService service) : ControllerBa
             Name = dto.Name,
             Description = dto.Description,
             Location = dto.Location,
+            Coordinates = dto.Coordinates,
             StartTime = dto.StartTime,
-            EndTime = dto.EndTime,
+            Hours = dto.Hours,
             CreatedByUserId = dto.CreatedByUserId,
         };
 
@@ -106,8 +129,8 @@ public class KaraokeEventsController(KaraokeEventService service) : ControllerBa
         {
             if (error == "NotFound")
                 return NotFound(new { status = "NOT_FOUND", error = "Event not found." });
-            if (error == "EndTimePassed")
-                return BadRequest(new { status = "END_TIME_PASSED", error = "Cannot publish event: EndTime has already passed." });
+            if (error == "EventEnded")
+                return BadRequest(new { status = "EVENT_ENDED", error = "Cannot publish event: the event duration has already passed." });
             return BadRequest(new { status = "ERROR", error = error });
         }
 

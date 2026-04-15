@@ -8,4 +8,8 @@ public class CreateUserDto
     [StringLength(200)]
     [EmailAddress]
     public string Email { get; set; } = string.Empty;
+
+    [Required]
+    [StringLength(200)]
+    public string FirstName { get; set; } = string.Empty;
 }
