@@ -9,6 +9,8 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using DotNetEnv;
 using Microsoft.OpenApi;
+using System.Text.Json.Nodes;
+using System.Text.Json.Serialization;
 
 Env.Load();
 
@@ -76,11 +78,23 @@ builder.Services.AddSwaggerGen(options =>
 });
 builder.Services.AddOpenApi(options =>
 {
-    // ASP.NET Core OpenAPI (Microsoft.OpenApi v2) emits type as a JsonSchemaType
-    // flags enum. For int properties it sets Integer|String, which serialises as
-    // ["integer","string"]. Strip the String flag so ids resolve as number only.
     options.AddSchemaTransformer((schema, context, cancellationToken) =>
     {
+        var type = context.JsonTypeInfo.Type;
+        var underlyingType = Nullable.GetUnderlyingType(type) ?? type;
+
+        // Emit enums as string with named values instead of integers.
+        if (underlyingType.IsEnum)
+        {
+            schema.Type = JsonSchemaType.String;
+            schema.Enum = [.. Enum.GetNames(underlyingType).Select(n => (JsonNode)JsonValue.Create(n)!)];
+            schema.Format = null;
+            return Task.CompletedTask;
+        }
+
+        // ASP.NET Core OpenAPI (Microsoft.OpenApi v2) emits type as a JsonSchemaType
+        // flags enum. For int properties it sets Integer|String, which serialises as
+        // ["integer","string"]. Strip the String flag so ids resolve as number only.
         if (schema.Type.HasValue
             && schema.Type.Value.HasFlag(JsonSchemaType.Integer)
             && schema.Type.Value.HasFlag(JsonSchemaType.String))
@@ -99,6 +113,7 @@ builder.Services.Configure<JsonOptions>(options =>
 {
     options.JsonSerializerOptions.RespectNullableAnnotations = true;
     options.JsonSerializerOptions.RespectRequiredConstructorParameters = true;
+    options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
 });
 
 builder.Services.AddScoped<DiagnosticService>();
